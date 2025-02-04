@@ -1,13 +1,13 @@
 from enums import SongCodec
 
 HEADERS = {
-  'Content-Type': 'application/json;charset=utf-8',
-  'Connection': 'keep-alive',
-  'Accept': 'application/json',
-  'Origin': 'https://music.apple.com',
-  'Referer': 'https://music.apple.com/',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,like Gecko) Chrome/110.0.0.0 Safari/537.36'
+    "Content-Type": "application/json;charset=utf-8",
+    "Connection": "keep-alive",
+    "Accept": "application/json",
+    "Origin": "https://music.apple.com",
+    "Referer": "https://music.apple.com/",
+    "Accept-Encoding": "gzip, deflate, br",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,like Gecko) Chrome/110.0.0.0 Safari/537.36",
 }
 
 SONG_CODEC_REGEX_MAP = {
@@ -23,10 +23,15 @@ SONG_CODEC_REGEX_MAP = {
 }
 
 URL = {
-  "WEBPLAYBACK": "https://play.itunes.apple.com/WebObjects/MZPlay.woa/wa/webPlayback",
-  "SONG_INFO_BASE": "https://amp-api.music.apple.com/v1/catalog/",
-  "LICENSE_API": "https://play.itunes.apple.com/WebObjects/MZPlay.woa/wa/acquireWebPlaybackLicense"
+    "WEBPLAYBACK": "https://play.itunes.apple.com/WebObjects/MZPlay.woa/wa/webPlayback",
+    # "SONG_INFO_BASE": "https://amp-api.music.apple.com/v1/catalog/",
+    "LICENSE_API": "https://play.itunes.apple.com/WebObjects/MZPlay.woa/wa/acquireWebPlaybackLicense",
+    "BASE_URL": "https://music.apple.com",
+    "AMP_API": "https://amp-api.music.apple.com/",
 }
+
+REQUEST_TIMEOUT = 10
+MAX_RETRIES = 3
 
 MP4_TAGS_MAP = {
     "album": "\xa9alb",
