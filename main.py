@@ -1,10 +1,13 @@
 ﻿import asyncio
 import json
 import logging
+from pathlib import Path
 
-from enums import SongCodec
-from legacy_download import DownloaderSongLegacy
-from song import Song
+from scripts import AppConfig, AppleMusicAPI, LegacyDownloader, SongCodec
+
+# from enums import SongCodec
+# from legacy_download import DownloaderSongLegacy
+# from song import Song
 
 
 async def main() -> None:
@@ -12,8 +15,13 @@ async def main() -> None:
     logger = logging.getLogger(__name__)
 
     # Get TouchDesigner parameters
-    token = parent().par.Usermediatoken.eval()  # type: ignore
-    url = parent().par.Url.eval()  # type: ignore
+    # token = parent().par.Usermediatoken.eval()  # type: ignore
+    # url = parent().par.Url.eval()  # type: ignore
+
+    token = "ArH0orYv8OPC4JCIyP1dnR1es8UyvAb+M7XhMAqrBjwHoKJDqoI5wxTly6l6t8iFb3Xf1HCyla0SE3ihmZQjQ0gdixevBuyNbkdBOw3KAJt614ILEzxs76HRnfL92Bm8u2BfCiaJS0hsUwD2qtgCYDKpYvR3p/wWBBQ1W1lw++9agu/wvbyEYUla9wTQ7Jo/lVxoTxkzhC0tXqZG1Gra0gTz8HtyDClBLIzSVN2jm0XPruYTeQ=="
+    url = (
+        "https://music.apple.com/br/album/texas-hold-em/1730408497?i=1730408498&l=en-GB"
+    )
 
     # Error if data is not found
     if not token or not url:
@@ -23,52 +31,32 @@ async def main() -> None:
 
     try:
         # Initialize downloader
-        codec = SongCodec.AAC_LEGACY
-        legacy = DownloaderSongLegacy(codec, token)
-
-        # Get song info
-        song_info = legacy.downloader.app.get_song_info(url)
-        webPlayback = legacy.downloader.app.get_web_playback(song_info["id"])[0]
-
-        # Get stream info and decryption key
-        stream_info = await legacy.get_stream_info(webPlayback)
-        decryption_key = await legacy.get_decryption_key(
-            stream_info.pssh, song_info["id"]
+        config = AppConfig(
+            token=token,
+            temp_path=Path("./tmp"),
+            final_path=Path("./Audio"),
+            cover_size=1000,
+            log_level=logging.INFO,
+            ffmpeg_path=Path("/opt/homebrew/bin/ffmpeg"),
         )
 
-        # Set paths
-        encrypted_path = legacy.get_encrypted_path(song_info["id"])
-        remuxed_path = legacy.get_remuxed_path(song_info["id"])
+        async with LegacyDownloader(SongCodec.AAC_LEGACY, config) as legacy:
+            api = AppleMusicAPI(token)
+            song_info = api.get_song_info(url)
+            web_playback = api.get_web_playback(song_info["id"])[0]
 
-        # Download and remux the song
-        legacy.downloader.download(encrypted_path, stream_info.stream_url)
-        legacy.remux(encrypted_path, remuxed_path, decryption_key)
+            stream_info = await legacy.get_stream_info(web_playback)
 
-        # Apply metadata
-        tags = legacy.downloader.getTags(webPlayback)
-        cover_url = legacy.downloader.getCoverUrl(
-            song_info["attributes"]["artwork"]["url"]
-        )
-        cover_file = legacy.downloader.downloadCoverFile(cover_url)
-        legacy.downloader.applyTags(remuxed_path, tags, cover_url)
+            await legacy.process_download(song_info["id"], stream_info)
 
-        # Move the song to the final path
-        final_path = legacy.get_final_path()
-        legacy.downloader.moveToFinalPath(remuxed_path, final_path)
-
-        # Create the Song object
-        song = Song(song_info, cover_file)
-        song_json = song.get_data()
-
-        # Output and update TouchDesigner content
-        op("request_output").text = json.dumps(song_json)  # type: ignore
-        op("/project1/creep1").par.reset.pulse()  # type: ignore
-        parent().par.Songreload.pulse()  # type: ignore
+            cover_url = legacy.downloader.get_cover_url(
+                song_info["attributes"]["artwork"]["url"]
+            )
+            tags = legacy.downloader.get_tags(web_playback)
 
     except Exception as e:
-        logger.error(f"Error: {e}")
-        op("/project1/out_text").text = "Error: " + str(e)  # type: ignore
-        raise
+        logger.error(f"Error downloading song: {e}")
+        # op("/project1/out_text").text = str(e)
 
 
 # Run async main
