@@ -90,10 +90,11 @@ class Song:
     def _get_miliseconds(self, time: str) -> float:
         """Convert timestamp to milliseconds."""
         try:
-            parts = time.split(":")
-            if len(parts) == 2:
-                return (int(parts[0]) * 60 + float(parts[1])) * 1000
-            return float(parts[0]) * 1000
+            self.logger.debug(f"Converting time: {time}")
+            minutes, seconds = time.split(":")
+            total_milliseconds = (int(minutes) * 60 * 1000) + (float(seconds) * 1000)
+            self.logger.debug(f"Time in milliseconds: {total_milliseconds}")
+            return total_milliseconds
         except ValueError as e:
             self.logger.error(f"Invalid time format: {str(e)}")
             raise SongError(f"Invalid time format: {str(e)}")
@@ -175,28 +176,32 @@ class Song:
                 lyrics.append(line.text)
 
                 if has_timing:
-                    if "span" in str(line):
-                        # Handle word-by-word timing
-                        span_soup = BeautifulSoup(str(line), "html.parser")
-                        for span in span_soup.find_all(
-                            "span", attrs={"begin": True, "end": True}
-                        ):
-                            begin = self._get_timestamp(span.get("begin"))
-                            time_synced_lyrics.append(
-                                {
-                                    "time": begin,
-                                    "timeMs": self._get_miliseconds(span.get("begin")),
-                                    "text": span.text,
-                                }
-                            )
-                    else:
-                        # Handle line-by-line timing
+                    # if "span" in str(line):
+                    #     # Handle word-by-word timing
+                    #     span_soup = BeautifulSoup(str(line), "html.parser")
+                    #     for span in span_soup.find_all(
+                    #         "span", attrs={"begin": True, "end": True}
+                    #     ):
+                    #         begin = self._get_timestamp(span.get("begin"))
+                    #         time_synced_lyrics.append(
+                    #             {
+                    #                 "time": begin,
+                    #                 "timeMs": self._get_miliseconds(span.get("begin")),
+                    #                 "text": span.text,
+                    #             }
+                    #         )
+                    # else:
+                    # Handle line-by-line timing
+                    begin = self._get_timestamp(line.get("begin"))
+                    end = self._get_timestamp(line.get("end"))
+
+                    if begin and end:
                         time_synced_lyrics.append(
                             {
-                                "beginTime": self._get_timestamp(line.get("begin")),
-                                "beginTimeMs": self._get_miliseconds(line.get("begin")),
-                                "endTime": self._get_timestamp(line.get("end")),
-                                "endTimeMs": self._get_miliseconds(line.get("end")),
+                                "beginTime": begin,
+                                "beginTimeMs": self._get_miliseconds(begin),
+                                "endTime": end,
+                                "endTimeMs": self._get_miliseconds(end),
                                 "text": line.text,
                             }
                         )
