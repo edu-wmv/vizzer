@@ -5,5 +5,5 @@ Backup/
 /tmp
 /Backup
 *.mov
-/Audio
+Audio/
 *.m4a

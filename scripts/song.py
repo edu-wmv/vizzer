@@ -64,6 +64,12 @@ class Song:
             self.ttml = data["relationships"]["lyrics"]["data"][0]["attributes"].get(
                 "ttml"
             )
+            if "syllable-lyrics" in data["relationships"]:
+                self.syllable_ttml = data["relationships"]["syllable-lyrics"]["data"][
+                    0
+                ]["attributes"].get("ttml")
+            else:
+                self.syllable_ttml = None
             self.name = data["attributes"].get("name")
             self.artistName = data["attributes"].get("artistName")
             self.duration = data["attributes"].get("durationInMillis")
@@ -150,6 +156,42 @@ class Song:
             self.logger.error(f"Error processing basic info: {str(e)}")
             raise SongError(f"Error processing basic info: {str(e)}")
 
+    def _process_syllable_lyrics(self, ttml: BeautifulSoup) -> Dict[str, Any]:
+        """
+        Process syllable lyrics.
+        """
+
+        try:
+            time_synced_lyrics = []
+            timing_attr = ttml.find("tt")
+            has_timing = timing_attr and timing_attr.get("itunes:timing")
+
+            if has_timing:
+                for line in ttml.find_all("p"):
+                    key = line.get("itunes:key")
+
+                    for word in line.find_all("span"):
+                        if word.get("ttm:role") == "x-bg":
+                            continue
+
+                        w_begin = self._get_timestamp(word.get("begin"))
+                        w_end = self._get_timestamp(word.get("end"))
+
+                        if w_begin and w_end:
+                            time_synced_lyrics.append(
+                                {
+                                    "key": key,
+                                    "beginTime": self._get_miliseconds(w_begin),
+                                    "endTime": self._get_miliseconds(w_end),
+                                    "text": word.text,
+                                }
+                            )
+
+            return time_synced_lyrics
+        except Exception as e:
+            self.logger.error(f"Error processing syllable lyrics: {str(e)}")
+            raise SongError(f"Error processing syllable lyrics: {str(e)}")
+
     def _process_lyrics(self, ttml: BeautifulSoup) -> Dict[str, Any]:
         """
         Process TTML lyrics data.
@@ -176,22 +218,6 @@ class Song:
                 lyrics.append(line.text)
 
                 if has_timing:
-                    # if "span" in str(line):
-                    #     # Handle word-by-word timing
-                    #     span_soup = BeautifulSoup(str(line), "html.parser")
-                    #     for span in span_soup.find_all(
-                    #         "span", attrs={"begin": True, "end": True}
-                    #     ):
-                    #         begin = self._get_timestamp(span.get("begin"))
-                    #         time_synced_lyrics.append(
-                    #             {
-                    #                 "time": begin,
-                    #                 "timeMs": self._get_miliseconds(span.get("begin")),
-                    #                 "text": span.text,
-                    #             }
-                    #         )
-                    # else:
-                    # Handle line-by-line timing
                     begin = self._get_timestamp(line.get("begin"))
                     end = self._get_timestamp(line.get("end"))
 
@@ -209,6 +235,11 @@ class Song:
             info["lyrics"] = lyrics
             if time_synced_lyrics:
                 info["timeSyncedLyrics"] = time_synced_lyrics
+
+            if self.syllable_ttml:
+                syllable_ttml = BeautifulSoup(self.syllable_ttml, "html.parser")
+                syllable_lyrics = self._process_syllable_lyrics(syllable_ttml)
+                info["syllableLyrics"] = syllable_lyrics
 
             self.logger.info(f"Processed {len(lyrics)} lyrics lines")
             return info
@@ -229,6 +260,7 @@ class Song:
         try:
             ttml = BeautifulSoup(self.ttml, "html.parser")
             info = self._process_lyrics(ttml)
+
             info["colors"] = self._get_colors()
 
             if bg_color := self.data["attributes"]["artwork"].get("bgColor"):

@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import logging
 
@@ -62,7 +62,7 @@ async def main() -> None:
 
         # Output and update TouchDesigner content
         op("request_output").text = json.dumps(song_json)  # type: ignore
-        op("/project1/creep1").par.reset.pulse()  # type: ignore
+        op("/project1/3D_text/creep1").par.reset.pulse()  # type: ignore
         parent().par.Songreload.pulse()  # type: ignore
 
     except Exception as e:
